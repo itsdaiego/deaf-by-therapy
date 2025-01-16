@@ -8,14 +8,14 @@ const theme = createTheme({
   palette: {
     mode: 'dark',
     primary: {
-      main: '#BB86FC',
+      main: '#FFFFFF',
     },
     secondary: {
-      main: '#03DAC6',
+      main: '#CCCCCC',
     },
     background: {
-      default: '#121212',
-      paper: '#1E1E1E',
+      default: '#000000',
+      paper: '#121212',
     },
   },
 })
@@ -26,16 +26,27 @@ function App() {
   return (
     <ThemeProvider theme={theme}>
       <CssBaseline />
-      <Container maxWidth="md" sx={{ height: '100vh', py: 4 }}>
+      <Container 
+        maxWidth="md" 
+        sx={{ 
+          height: '100vh', 
+          py: 4,
+          display: 'flex',
+          justifyContent: 'center',
+          alignItems: 'center',
+        }}
+      >
         <Paper
           elevation={3}
           sx={{
-            height: '100%',
+            height: '90vh',
+            width: '100%',
             display: 'flex',
             flexDirection: 'column',
             overflow: 'hidden',
             bgcolor: 'background.paper',
             borderRadius: 2,
+            border: '1px solid rgba(255, 255, 255, 0.1)',
           }}
         >
           <Box
@@ -45,7 +56,8 @@ function App() {
               display: 'flex',
               justifyContent: 'center',
               alignItems: 'center',
-              borderBottom: '1px solid rgba(255, 255, 255, 0.12)',
+              borderBottom: '1px solid rgba(255, 255, 255, 0.1)',
+              bgcolor: '#0A0A0A',
             }}
           >
             <TherapistAvatar isThinking={isThinking} />

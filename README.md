@@ -1,23 +1,6 @@
-# Deaf by Therapy - The Roasting Therapist Chatbot
+# Deaf by Therapy
 
-A humorous chatbot that plays a sarcastic therapist, providing not-so-helpful advice with style. Features a modern UI with an animated face and a chat interface.
-
-## Features
-
-- 🎭 Animated therapist face that reacts to the conversation
-- 💬 Real-time chat interface
-- 🌙 Dark mode UI
-- 🔥 Sarcastic and roasting responses
-- ⚡ Fast and responsive
-
-## Tech Stack
-
-- Frontend: React + TypeScript + Vite
-- Backend: FastAPI
-- UI Framework: Material-UI
-- Animations: Framer Motion
-
-## Setup
+A therapy session that might kill you wielding the power of sarcasm.
 
 ### Backend
 
@@ -38,8 +21,6 @@ cd backend
 uvicorn main:app --reload
 ```
 
-The backend will be available at `http://localhost:8000`
-
 ### Frontend
 
 1. Install dependencies:
@@ -52,11 +33,3 @@ npm install
 ```bash
 npm run dev
 ```
-
-The frontend will be available at `http://localhost:5173`
-
-## Usage
-
-1. Open your browser and navigate to `http://localhost:5173`
-2. Start chatting with your sarcastic therapist
-3. Enjoy the not-so-helpful advice! 
