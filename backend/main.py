@@ -22,6 +22,9 @@ app.add_middleware(
 class ChatMessageRequest(BaseModel):
     message: str
 
+class SpeechRequest(BaseModel):
+    text: str
+
 http_client = httpx.Client(
     base_url="https://api.anthropic.com",
     timeout=30.0,
@@ -66,6 +69,39 @@ async def chat(message: ChatMessageRequest):
         return {"response": response.content[0].text}
     except Exception as e:
         print(f"Error: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/api/avatar/speak")
+async def generate_avatar_speech(request: SpeechRequest):
+    try:
+        async with httpx.AsyncClient() as client:
+            did_response = await client.post(
+                "https://api.d-id.com/talks",
+                headers={
+                    "Authorization": f"Basic {os.getenv('DID_API_KEY')}",
+                    "Content-Type": "application/json",
+                },
+                json={
+                    "script": {
+                        "type": "text",
+                        "input": request.text,
+                        "provider": {
+                            "type": "elevenlabs",
+                            "voice_id": os.getenv('ELEVENLABS_VOICE_ID')
+                        }
+                    },
+                    "source_url": os.getenv('AVATAR_IMAGE_URL')
+                }
+            )
+            
+            if did_response.status_code != 200:
+                raise HTTPException(status_code=did_response.status_code, detail="Failed to generate avatar speech")
+            
+            result = did_response.json()
+            return {"video_url": result.get("result_url")}
+            
+    except Exception as e:
+        print(f"Error generating avatar speech: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.on_event("shutdown")

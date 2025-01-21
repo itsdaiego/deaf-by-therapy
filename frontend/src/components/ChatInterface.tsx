@@ -6,9 +6,14 @@ import {
   Paper,
   Typography,
   Stack,
+  Fab,
+  Tooltip,
 } from '@mui/material'
 import SendIcon from '@mui/icons-material/Send'
+import VolumeUpIcon from '@mui/icons-material/VolumeUp'
+import VolumeOffIcon from '@mui/icons-material/VolumeOff'
 import axios from 'axios'
+import TherapistAvatar from './TherapistAvatar'
 
 interface Message {
   text: string
@@ -27,7 +32,9 @@ const ChatInterface = ({ setIsThinking }: ChatInterfaceProps) => {
     },
   ])
   const [input, setInput] = useState('')
+  const [isSpeechEnabled, setIsSpeechEnabled] = useState(false)
   const messagesEndRef = useRef<HTMLDivElement>(null)
+  const videoRef = useRef<HTMLVideoElement>(null)
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
@@ -36,6 +43,23 @@ const ChatInterface = ({ setIsThinking }: ChatInterfaceProps) => {
   useEffect(() => {
     scrollToBottom()
   }, [messages])
+
+  const speakMessage = async (text: string) => {
+    if (!isSpeechEnabled) return
+
+    try {
+      const response = await axios.post('http://localhost:8000/api/avatar/speak', {
+        text,
+      })
+      
+      if (videoRef.current && response.data.video_url) {
+        videoRef.current.src = response.data.video_url
+        videoRef.current.play()
+      }
+    } catch (error) {
+      console.error('Error generating speech:', error)
+    }
+  }
 
   const handleSend = async () => {
     if (!input.trim()) return
@@ -50,18 +74,20 @@ const ChatInterface = ({ setIsThinking }: ChatInterfaceProps) => {
         message: userMessage,
       })
       
+      const therapistResponse = response.data.response
       setMessages((prev) => [
         ...prev,
-        { text: response.data.response, isUser: false },
+        { text: therapistResponse, isUser: false },
       ])
+      
+      await speakMessage(therapistResponse)
     } catch (error) {
+      const errorMessage = "Sorry, I'm having an existential crisis right now. Try again later."
       setMessages((prev) => [
         ...prev,
-        {
-          text: "Sorry, I'm having an existential crisis right now. Try again later.",
-          isUser: false,
-        },
+        { text: errorMessage, isUser: false },
       ])
+      await speakMessage(errorMessage)
     } finally {
       setIsThinking(false)
     }
@@ -83,6 +109,7 @@ const ChatInterface = ({ setIsThinking }: ChatInterfaceProps) => {
       margin: '0 auto',
       width: '100%',
       maxWidth: '800px',
+      position: 'relative',
     }}>
       <Box
         sx={{
@@ -113,6 +140,15 @@ const ChatInterface = ({ setIsThinking }: ChatInterfaceProps) => {
                 px: 2,
               }}
             >
+              {!message.isUser && (
+                <Box sx={{ mr: 2, alignSelf: 'flex-end' }}>
+                  <TherapistAvatar 
+                    isThinking={false} 
+                    size={40} 
+                    videoRef={message.isUser ? undefined : videoRef} 
+                  />
+                </Box>
+              )}
               <Paper
                 sx={{
                   p: 2,
@@ -195,6 +231,25 @@ const ChatInterface = ({ setIsThinking }: ChatInterfaceProps) => {
           </IconButton>
         </Box>
       </Box>
+      
+      {/* Speech Toggle Button */}
+      <Tooltip title={isSpeechEnabled ? "Disable Speech" : "Enable Speech"}>
+        <Fab
+          color="primary"
+          sx={{
+            position: 'fixed',
+            right: 32,
+            bottom: 32,
+            bgcolor: isSpeechEnabled ? '#1A1A1A' : '#262626',
+            '&:hover': {
+              bgcolor: isSpeechEnabled ? '#262626' : '#1A1A1A',
+            },
+          }}
+          onClick={() => setIsSpeechEnabled(!isSpeechEnabled)}
+        >
+          {isSpeechEnabled ? <VolumeUpIcon /> : <VolumeOffIcon />}
+        </Fab>
+      </Tooltip>
     </Box>
   )
 }

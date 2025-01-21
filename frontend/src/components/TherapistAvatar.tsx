@@ -1,107 +1,86 @@
-import { motion } from 'framer-motion'
-import { Box } from '@mui/material'
+import { useState, useRef } from 'react'
+import { Box, IconButton, Tooltip } from '@mui/material'
+import MicIcon from '@mui/icons-material/Mic'
 
 interface TherapistAvatarProps {
   isThinking: boolean
+  size?: number
+  videoRef?: React.RefObject<HTMLVideoElement>
 }
 
-const TherapistAvatar = ({ isThinking }: TherapistAvatarProps) => {
+const TherapistAvatar = ({ isThinking, size = 300, videoRef }: TherapistAvatarProps) => {
+  const [isSpeaking, setIsSpeaking] = useState(false)
+
+  const handleSpeak = async () => {
+    setIsSpeaking(true)
+    try {
+      const response = await fetch('http://localhost:8000/api/avatar/speak', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          text: 'Hello, I am your AI therapist. How are you feeling today?'
+        })
+      })
+
+      if (!response.ok) {
+        throw new Error('Failed to generate speech')
+      }
+
+      const data = await response.json()
+      if (videoRef && data.video_url) {
+        videoRef.current!.src = data.video_url
+        videoRef.current!.play()
+      }
+    } catch (error) {
+      console.error('Error generating speech:', error)
+    } finally {
+      setIsSpeaking(false)
+    }
+  }
+
   return (
     <Box
       sx={{
-        width: 200,
-        height: 200,
         position: 'relative',
-        backgroundColor: '#1A1A1A',
+        width: size,
+        height: size,
         borderRadius: '50%',
+        overflow: 'hidden',
+        backgroundColor: '#1A1A1A',
         display: 'flex',
         justifyContent: 'center',
         alignItems: 'center',
         boxShadow: '0 4px 8px rgba(0,0,0,0.3)',
       }}
     >
-      {/* Eyes */}
-      <motion.div
+      <video
+        ref={videoRef}
         style={{
-          position: 'absolute',
-          display: 'flex',
-          gap: '40px',
-          top: '60px',
+          width: '100%',
+          height: '100%',
+          objectFit: 'cover',
         }}
-        animate={
-          isThinking
-            ? {
-                y: [0, -10, 0],
-                transition: {
-                  duration: 2,
-                  repeat: Infinity,
-                },
-              }
-            : {}
-        }
-      >
-        <motion.div
-          style={{
-            width: '30px',
-            height: '30px',
-            backgroundColor: '#FFFFFF',
-            borderRadius: '50%',
-          }}
-          animate={{
-            scale: [1, 1.2, 1],
-            transition: {
-              duration: 2,
-              repeat: Infinity,
-            },
-          }}
-        />
-        <motion.div
-          style={{
-            width: '30px',
-            height: '30px',
-            backgroundColor: '#FFFFFF',
-            borderRadius: '50%',
-          }}
-          animate={{
-            scale: [1, 1.2, 1],
-            transition: {
-              duration: 2,
-              repeat: Infinity,
-              delay: 0.3,
-            },
-          }}
-        />
-      </motion.div>
-
-      {/* Mouth */}
-      <motion.div
-        style={{
-          position: 'absolute',
-          width: '100px',
-          height: '40px',
-          border: '8px solid #FFFFFF',
-          borderRadius: '0 0 40px 40px',
-          borderTop: 'none',
-          bottom: '50px',
-        }}
-        animate={
-          isThinking
-            ? {
-                scaleX: [1, 0.6, 1],
-                transition: {
-                  duration: 1.5,
-                  repeat: Infinity,
-                },
-              }
-            : {
-                scaleX: [1, 1.2, 1],
-                transition: {
-                  duration: 2,
-                  repeat: Infinity,
-                },
-              }
-        }
       />
+      
+      <Tooltip title="Speak">
+        <IconButton
+          onClick={handleSpeak}
+          disabled={isSpeaking}
+          sx={{
+            position: 'absolute',
+            bottom: 16,
+            right: 16,
+            backgroundColor: 'rgba(255, 255, 255, 0.1)',
+            '&:hover': {
+              backgroundColor: 'rgba(255, 255, 255, 0.2)',
+            },
+          }}
+        >
+          <MicIcon />
+        </IconButton>
+      </Tooltip>
     </Box>
   )
 }
