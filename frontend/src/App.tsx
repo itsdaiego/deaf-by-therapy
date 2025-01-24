@@ -22,9 +22,8 @@ const theme = createTheme({
 
 function App() {
   const [isThinking, setIsThinking] = useState(false)
-  const videoRef = useRef<HTMLVideoElement>({
-    src: null,
-  })
+  const [isPlaying, setIsPlaying] = useState(false)
+  const videoRef = useRef<HTMLVideoElement>(null)
 
   return (
     <ThemeProvider theme={theme}>
@@ -66,10 +65,14 @@ function App() {
             <TherapistAvatar 
               isThinking={isThinking} 
               videoRef={videoRef}
-              isStatic={videoRef.current === null ? true : false}
+              isStatic={!isPlaying}
             />
           </Box>
-          <ChatInterface setIsThinking={setIsThinking} videoRef={videoRef} />
+          <ChatInterface 
+            setIsThinking={setIsThinking} 
+            videoRef={videoRef}
+            setIsPlaying={setIsPlaying}
+          />
         </Paper>
       </Container>
     </ThemeProvider>

@@ -23,9 +23,10 @@ interface Message {
 interface ChatInterfaceProps {
   setIsThinking: (thinking: boolean) => void
   videoRef: React.RefObject<HTMLVideoElement>
+  setIsPlaying: (playing: boolean) => void
 }
 
-const ChatInterface = ({ setIsThinking, videoRef }: ChatInterfaceProps) => {
+const ChatInterface = ({ setIsThinking, videoRef, setIsPlaying }: ChatInterfaceProps) => {
   const [messages, setMessages] = useState<Message[]>([
     {
       text: "Hello! I'm your totally qualified therapist. Tell me what's bothering you, and I'll try not to laugh... I mean, help.",
@@ -91,8 +92,14 @@ const ChatInterface = ({ setIsThinking, videoRef }: ChatInterfaceProps) => {
         const videoUrl = await pollForVideo(talkId)
         if (videoRef.current && videoUrl) {
           console.log("Playing video URL:", videoUrl)
+          setIsPlaying(true)
           videoRef.current.src = videoUrl
           await videoRef.current.play()
+          
+          // Add event listener for when video ends
+          videoRef.current.onended = () => {
+            setIsPlaying(false)
+          }
         } else {
           console.error("Failed to get video URL after polling")
         }
@@ -102,6 +109,7 @@ const ChatInterface = ({ setIsThinking, videoRef }: ChatInterfaceProps) => {
         } else {
           console.error('Error generating speech:', error)
         }
+        setIsPlaying(false)
       }
     }
   }

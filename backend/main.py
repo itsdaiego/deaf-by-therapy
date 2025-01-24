@@ -1,3 +1,5 @@
+import asyncio
+from typing import AsyncIterator
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
@@ -109,7 +111,7 @@ async def generate_avatar_speech(request: SpeechRequest):
                         detail=f"D-ID API Error: {response_json}"
                     )
 
-                return {"video_url": response_json.get("result_url")}
+                return {"id": response_json.get("id")}
             except httpx.HTTPError as e:
                 print(f"HTTP Error: {str(e)}")
                 raise HTTPException(status_code=500, detail=f"HTTP Error: {str(e)}")
@@ -183,6 +185,8 @@ async def generate_avatar_speech(request: SpeechRequest):
             "is_mixed": False,
             "created_at_unix": None
         }
+
+        await asyncio.sleep(2)
 
         return {"id": mock_response.get("id")}
 
@@ -290,6 +294,8 @@ async def get_avatar_speech(id: str):
             "started_at": "2025-01-24T01:26:21.407",
             "result_url": "https://d-id-talks-prod.s3.us-west-2.amazonaws.com/google-oauth2%7C113759824665234992082/tlk_W3vxWIxkPq1sliMY6aBfL/1737681981352.mp4?AWSAccessKeyId=AKIA5CUMPJBIK65W6FGA&Expires=1737768389&Signature=x2ZUixoL3YZgu%2BeKxTv%2F3t7jNEo%3D"
         }
+
+        await asyncio.sleep(2)
 
         return { "video_url": mock_response.get("result_url") }
 
