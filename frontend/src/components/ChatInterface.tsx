@@ -45,21 +45,63 @@ const ChatInterface = ({ setIsThinking, videoRef }: ChatInterfaceProps) => {
     scrollToBottom()
   }, [messages])
 
+  const pollForVideo = async (talkId: string, maxAttempts = 30): Promise<string | null> => {
+    let attempts = 0;
+    
+    while (attempts < maxAttempts) {
+      try {
+        const response = await axios.get(`http://localhost:3000/api/avatar/speak/${talkId}`)
+        
+        if (response.data.video_url) {
+          console.log("Got video URL:", response.data.video_url)
+          return response.data.video_url
+        } else {
+          console.log("No video URL yet, attempt:", attempts + 1)
+        }
+      } catch (error) {
+        console.error('Error polling for video:', error)
+      }
+      
+      await new Promise(resolve => setTimeout(resolve, 1000))
+      attempts++
+    }
+    
+    console.error("Max polling attempts reached without getting a video URL")
+    return null
+  }
+
   const handleTherapistResponse = async (text: string) => {
     setMessages((prev) => [...prev, { text, isUser: false }])
     
     if (isSpeechEnabled) {
       try {
-        const response = await axios.post('http://localhost:3000/api/avatar/speak', {
+        console.log("Creating talk with text:", text)
+        const createResponse = await axios.post('http://localhost:3000/api/avatar/speak', {
           text,
         })
         
-        if (videoRef.current && response.data.video_url) {
-          videoRef.current.src = response.data.video_url
+        if (!createResponse.data.id) {
+          console.error("No talk ID received from create response")
+          return
+        }
+
+        const talkId = createResponse.data.id
+        console.log("Got talk ID:", talkId)
+        
+        const videoUrl = await pollForVideo(talkId)
+        if (videoRef.current && videoUrl) {
+          console.log("Playing video URL:", videoUrl)
+          videoRef.current.src = videoUrl
           await videoRef.current.play()
+        } else {
+          console.error("Failed to get video URL after polling")
         }
       } catch (error) {
-        console.error('Error generating speech:', error)
+        if (axios.isAxiosError(error)) {
+          console.error('Error generating speech:', error.response?.data || error.message)
+        } else {
+          console.error('Error generating speech:', error)
+        }
       }
     }
   }

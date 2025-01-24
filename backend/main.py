@@ -43,7 +43,7 @@ SYSTEM_PROMPT = """You are a sarcastic and witty therapist who gives humorous, s
 5. Offer absurd but somewhat logical solutions
 6. Keep responses concise (max 2-3 sentences)
 7. Always maintain a hint of therapeutic language while being obviously unhelpful
-8. Don't use any sort of language that attempts to express human emotions, for example: *clears throat*, *sighs*, etc.
+8. Don't use any sort of language that attempts to express human emotions, for example: *clears throat*, *sighs*, *straightens glasses* ,  etc.
 
 Example responses:
 - "Ah, classic projection. Have you considered that maybe it's not the world that's problematic, but your questionable life choices?"
@@ -113,6 +113,105 @@ async def generate_avatar_speech(request: SpeechRequest):
             except httpx.HTTPError as e:
                 print(f"HTTP Error: {str(e)}")
                 raise HTTPException(status_code=500, detail=f"HTTP Error: {str(e)}")
+
+        mock_response = {
+            "voice_id": "JBFqnCBsd6RMkjVDRZzb",
+            "id": "tlk_W3vxWIxkPq1sliMY6aBfL",
+            "name": "George", 
+            "samples": None,
+            "category": "premade",
+            "fine_tuning": {
+                "is_allowed_to_fine_tune": True,
+                "state": {
+                    "eleven_turbo_v2": "fine_tuned",
+                    "eleven_v2_flash": "fine_tuned", 
+                    "eleven_v2_5_flash": "fine_tuned"
+                },
+                "verification_failures": [],
+                "verification_attempts_count": 0,
+                "manual_verification_requested": False,
+                "language": "en",
+                "progress": {
+                    "eleven_v2_flash": 1.0,
+                    "eleven_v2_5_flash": 1.0
+                },
+                "message": {
+                    "eleven_turbo_v2": "",
+                    "eleven_v2_flash": "Done!",
+                    "eleven_v2_5_flash": "Done!"
+                },
+                "dataset_duration_seconds": None,
+                "verification_attempts": None,
+                "slice_ids": None,
+                "manual_verification": None,
+                "max_verification_attempts": 5,
+                "next_max_verification_attempts_reset_unix_ms": 1700000000000
+            },
+            "labels": {
+                "accent": "British",
+                "description": "warm",
+                "age": "middle aged",
+                "gender": "male",
+                "use_case": "narration"
+            },
+            "description": None,
+            "preview_url": "https://storage.googleapis.com/eleven-public-prod/premade/voices/JBFqnCBsd6RMkjVDRZzb/e6206d1a-0721-4787-aafb-06a6e705cac5.mp3",
+            "available_for_tiers": [],
+            "settings": None,
+            "sharing": None,
+            "high_quality_base_model_ids": [
+                "eleven_v2_flash",
+                "eleven_flash_v2", 
+                "eleven_turbo_v2_5",
+                "eleven_multilingual_v2",
+                "eleven_v2_5_flash",
+                "eleven_flash_v2_5",
+                "eleven_turbo_v2"
+            ],
+            "safety_control": None,
+            "voice_verification": {
+                "requires_verification": False,
+                "is_verified": False,
+                "verification_failures": [],
+                "verification_attempts_count": 0,
+                "language": None,
+                "verification_attempts": None
+            },
+            "permission_on_resource": None,
+            "is_owner": None,
+            "is_legacy": False,
+            "is_mixed": False,
+            "created_at_unix": None
+        }
+
+        return {"id": mock_response.get("id")}
+
+
+    except Exception as e:
+        print(f"Error generating avatar speech: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/api/avatar/speak/{id}")
+async def get_avatar_speech(id: str):
+    try:
+        if LIVE_MODE: 
+            async with httpx.AsyncClient() as client:
+                response = await client.get(
+                    f"https://api.d-id.com/talks/{id}",
+                    headers={
+                        "Authorization": f"Basic {os.getenv('DID_API_KEY')}"
+                    }
+                )
+
+                if response.status_code != 200:
+                    print(f"D-ID API Error: Status {response.status_code}")
+                    print(f"Response body: {response_json}")
+                    raise HTTPException(
+                        status_code=response.status_code,
+                        detail=f"D-ID API Error: {response_json}"
+                    )
+
+                return {"video_url": response.json().get("result_url")}
 
         mock_response = {
             "user": {
@@ -192,33 +291,7 @@ async def generate_avatar_speech(request: SpeechRequest):
             "result_url": "https://d-id-talks-prod.s3.us-west-2.amazonaws.com/google-oauth2%7C113759824665234992082/tlk_W3vxWIxkPq1sliMY6aBfL/1737681981352.mp4?AWSAccessKeyId=AKIA5CUMPJBIK65W6FGA&Expires=1737768389&Signature=x2ZUixoL3YZgu%2BeKxTv%2F3t7jNEo%3D"
         }
 
-        return {"video_url": mock_response.get("result_url")}
-
-
-    except Exception as e:
-        print(f"Error generating avatar speech: {str(e)}")
-        raise HTTPException(status_code=500, detail=str(e))
-
-@app.get("/api/avatar/speak/{id}")
-async def get_avatar_speech(id: str):
-    try:
-        async with httpx.AsyncClient() as client:
-            response = await client.get(
-                f"https://api.d-id.com/talks/{id}",
-                headers={
-                    "Authorization": f"Basic {os.getenv('DID_API_KEY')}"
-                }
-            )
-
-            if response.status_code != 200:
-                print(f"D-ID API Error: Status {response.status_code}")
-                print(f"Response body: {response_json}")
-                raise HTTPException(
-                    status_code=response.status_code,
-                    detail=f"D-ID API Error: {response_json}"
-                )
-
-            return {"video_url": response.json().get("result_url")}
+        return { "video_url": mock_response.get("result_url") }
 
     except httpx.HTTPError as e:
         print(f"HTTP Error: {str(e)}")

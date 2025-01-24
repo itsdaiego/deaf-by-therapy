@@ -10,6 +10,8 @@ interface TherapistAvatarProps {
 const THERAPIST_IMAGE = 'https://www.kristen-mcclure-therapist.com/wp-content/uploads/2024/12/675d715d0aab82b6b53bb153-HeadshotPro-1024x832.png'
 
 const TherapistAvatar = ({ isThinking, size = 300, videoRef, isStatic = true }: TherapistAvatarProps) => {
+  console.log("Therapist image: ", videoRef, isStatic)
+
   return (
     <Box
       sx={{
