@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useRef } from 'react'
 import { ThemeProvider, createTheme } from '@mui/material/styles'
 import { Box, Container, CssBaseline, Paper } from '@mui/material'
 import ChatInterface from './components/ChatInterface'
@@ -22,6 +22,7 @@ const theme = createTheme({
 
 function App() {
   const [isThinking, setIsThinking] = useState(false)
+  const videoRef = useRef<HTMLVideoElement>(null)
 
   return (
     <ThemeProvider theme={theme}>
@@ -29,11 +30,11 @@ function App() {
       <Container 
         maxWidth="md" 
         sx={{ 
-          height: '100vh', 
-          py: 4,
+          minHeight: '100vh',
           display: 'flex',
           justifyContent: 'center',
           alignItems: 'center',
+          p: 2,
         }}
       >
         <Paper
@@ -60,9 +61,13 @@ function App() {
               bgcolor: '#0A0A0A',
             }}
           >
-            <TherapistAvatar isThinking={isThinking} />
+            <TherapistAvatar 
+              isThinking={isThinking} 
+              videoRef={videoRef}
+              isStatic={false}
+            />
           </Box>
-          <ChatInterface setIsThinking={setIsThinking} />
+          <ChatInterface setIsThinking={setIsThinking} videoRef={videoRef} />
         </Paper>
       </Container>
     </ThemeProvider>

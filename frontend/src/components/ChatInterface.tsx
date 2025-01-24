@@ -22,9 +22,10 @@ interface Message {
 
 interface ChatInterfaceProps {
   setIsThinking: (thinking: boolean) => void
+  videoRef: React.RefObject<HTMLVideoElement>
 }
 
-const ChatInterface = ({ setIsThinking }: ChatInterfaceProps) => {
+const ChatInterface = ({ setIsThinking, videoRef }: ChatInterfaceProps) => {
   const [messages, setMessages] = useState<Message[]>([
     {
       text: "Hello! I'm your totally qualified therapist. Tell me what's bothering you, and I'll try not to laugh... I mean, help.",
@@ -32,9 +33,9 @@ const ChatInterface = ({ setIsThinking }: ChatInterfaceProps) => {
     },
   ])
   const [input, setInput] = useState('')
-  const [isSpeechEnabled, setIsSpeechEnabled] = useState(false)
+  const [isSpeechEnabled, setIsSpeechEnabled] = useState(true)
+  const [isProcessing, setIsProcessing] = useState(false)
   const messagesEndRef = useRef<HTMLDivElement>(null)
-  const videoRef = useRef<HTMLVideoElement>(null)
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
@@ -44,52 +45,47 @@ const ChatInterface = ({ setIsThinking }: ChatInterfaceProps) => {
     scrollToBottom()
   }, [messages])
 
-  const speakMessage = async (text: string) => {
-    if (!isSpeechEnabled) return
-
-    try {
-      const response = await axios.post('http://localhost:8000/api/avatar/speak', {
-        text,
-      })
-      
-      if (videoRef.current && response.data.video_url) {
-        videoRef.current.src = response.data.video_url
-        videoRef.current.play()
+  const handleTherapistResponse = async (text: string) => {
+    setMessages((prev) => [...prev, { text, isUser: false }])
+    
+    if (isSpeechEnabled) {
+      try {
+        const response = await axios.post('http://localhost:3000/api/avatar/speak', {
+          text,
+        })
+        
+        if (videoRef.current && response.data.video_url) {
+          videoRef.current.src = response.data.video_url
+          await videoRef.current.play()
+        }
+      } catch (error) {
+        console.error('Error generating speech:', error)
       }
-    } catch (error) {
-      console.error('Error generating speech:', error)
     }
   }
 
   const handleSend = async () => {
-    if (!input.trim()) return
+    if (!input.trim() || isProcessing) return
 
     const userMessage = input.trim()
     setInput('')
     setMessages((prev) => [...prev, { text: userMessage, isUser: true }])
     setIsThinking(true)
+    setIsProcessing(true)
 
     try {
-      const response = await axios.post('http://localhost:8000/api/chat', {
+      const response = await axios.post('http://localhost:3000/api/chat', {
         message: userMessage,
       })
       
       const therapistResponse = response.data.response
-      setMessages((prev) => [
-        ...prev,
-        { text: therapistResponse, isUser: false },
-      ])
-      
-      await speakMessage(therapistResponse)
+      await handleTherapistResponse(therapistResponse)
     } catch (error) {
       const errorMessage = "Sorry, I'm having an existential crisis right now. Try again later."
-      setMessages((prev) => [
-        ...prev,
-        { text: errorMessage, isUser: false },
-      ])
-      await speakMessage(errorMessage)
+      await handleTherapistResponse(errorMessage)
     } finally {
       setIsThinking(false)
+      setIsProcessing(false)
     }
   }
 
@@ -145,7 +141,7 @@ const ChatInterface = ({ setIsThinking }: ChatInterfaceProps) => {
                   <TherapistAvatar 
                     isThinking={false} 
                     size={40} 
-                    videoRef={message.isUser ? undefined : videoRef} 
+                    isStatic={true}
                   />
                 </Box>
               )}
@@ -232,7 +228,6 @@ const ChatInterface = ({ setIsThinking }: ChatInterfaceProps) => {
         </Box>
       </Box>
       
-      {/* Speech Toggle Button */}
       <Tooltip title={isSpeechEnabled ? "Disable Speech" : "Enable Speech"}>
         <Fab
           color="primary"
