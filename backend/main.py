@@ -91,23 +91,24 @@ async def chat(message: ChatMessageRequest):
 async def generate_speech(text: str, talk_id: str) -> str:
     """Generate speech using ElevenLabs and save to file"""
     try:
-        voice_id = os.getenv("ELEVENLABS_VOICE_ID", "ThT5KcBeYPX3keUQqHPh")
+        voice_id = os.getenv("ELEVENLABS_VOICE_ID", "LcfcDJNUP1GQjkzn1xUU")
 
-        # audio_stream = eleven_client.generate(
-        #     text=text,
-        #     voice=Voice(
-        #         voice_id=voice_id,
-        #         settings=VoiceSettings(stability=0.5, similarity_boost=0.75)
-        #     ),
-        #     model="eleven_monolingual_v1"
-        # )
-        #
-        # if not os.path.exists("media/audio/talk_sample.wav"):
-        #     with open("media/audio/talk_sample.wav", "wb") as f:
-        #         for chunk in audio_stream:
-        #             f.write(chunk)
-        with open("media/audio/talk_sample.wav", "rb") as f:
-            audio_stream = [f.read()]
+        audio_stream = eleven_client.generate(
+            text=text,
+            voice=Voice(
+                voice_id=voice_id,
+                settings=VoiceSettings(stability=0.5, similarity_boost=0.75)
+            ),
+            model="eleven_monolingual_v1"
+        )
+
+        if not os.path.exists("media/audio/talk_sample.wav"):
+            with open("media/audio/talk_sample.wav", "wb") as f:
+                for chunk in audio_stream:
+                    f.write(chunk)
+
+        # with open("media/audio/talk_sample.wav", "rb") as f:
+        #     audio_stream = [f.read()]
             
         
         audio_path = MEDIA_DIR / "audio" / f"{talk_id}.wav"
