@@ -1,4 +1,4 @@
-import asyncio
+# import asyncio
 from typing import AsyncIterator
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
@@ -6,9 +6,17 @@ from pydantic import BaseModel
 from anthropic import Anthropic
 import httpx
 import os
+import asyncio
+import subprocess
+from pathlib import Path
+from elevenlabs.client import ElevenLabs
+from elevenlabs import Voice, VoiceSettings
 from dotenv import load_dotenv
 
 load_dotenv()
+
+# Initialize ElevenLabs
+eleven_client = ElevenLabs(api_key=os.getenv("ELEVENLABS_API_KEY"))
 
 app = FastAPI()
 
@@ -19,6 +27,12 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# Create necessary directories
+MEDIA_DIR = Path("media")
+MEDIA_DIR.mkdir(exist_ok=True)
+(MEDIA_DIR / "audio").mkdir(exist_ok=True)
+(MEDIA_DIR / "video").mkdir(exist_ok=True)
 
 class ChatMessageRequest(BaseModel):
     message: str
@@ -74,123 +88,101 @@ async def chat(message: ChatMessageRequest):
         raise HTTPException(status_code=500, detail=str(e))
 
 
-LIVE_MODE = False
+async def generate_speech(text: str, talk_id: str) -> str:
+    """Generate speech using ElevenLabs and save to file"""
+    try:
+        voice_id = os.getenv("ELEVENLABS_VOICE_ID", "ThT5KcBeYPX3keUQqHPh")
+
+        # audio_stream = eleven_client.generate(
+        #     text=text,
+        #     voice=Voice(
+        #         voice_id=voice_id,
+        #         settings=VoiceSettings(stability=0.5, similarity_boost=0.75)
+        #     ),
+        #     model="eleven_monolingual_v1"
+        # )
+        #
+        # if not os.path.exists("media/audio/talk_sample.wav"):
+        #     with open("media/audio/talk_sample.wav", "wb") as f:
+        #         for chunk in audio_stream:
+        #             f.write(chunk)
+        with open("media/audio/talk_sample.wav", "rb") as f:
+            audio_stream = [f.read()]
+            
+        
+        audio_path = MEDIA_DIR / "audio" / f"{talk_id}.wav"
+        
+        # Save the audio by consuming the generator
+        audio_data = b''
+        for chunk in audio_stream:
+            audio_data += chunk
+            
+        with open(audio_path, 'wb') as f:
+            f.write(audio_data)
+            
+        return str(audio_path)
+    except Exception as e:
+        print(f"Error generating speech: {str(e)}")
+        raise
+
+async def generate_video(audio_path: str, talk_id: str) -> str:
+    """Generate lip-synced video using Wav2Lip"""
+    try:
+        input_image = MEDIA_DIR / "image/therapist.png"
+        output_path = MEDIA_DIR / "video" / f"{talk_id}.mp4"
+        
+        # Ensure the output directory exists
+        output_path.parent.mkdir(parents=True, exist_ok=True)
+        
+        process = await asyncio.create_subprocess_exec(
+            'python',
+            'wav2lip/inference.py',
+            '--checkpoint_path', 'wav2lip/checkpoints/wav2lip_gan.pth',
+            '--face', str(input_image),
+            '--audio', str(audio_path),
+            '--outfile', str(output_path),
+            '--nosmooth',
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.PIPE
+        )
+        
+        print(f"Starting video generation for {talk_id}...")
+        
+        async def read_stream(stream, prefix):
+            while True:
+                line = await stream.readline()
+                if not line:
+                    break
+                print(f"{prefix}: {line.decode().strip()}")
+                
+        # Read both stdout and stderr concurrently
+        await asyncio.gather(
+            read_stream(process.stdout, "OUT"),
+            read_stream(process.stderr, "ERR")
+        )
+        
+        return_code = await process.wait()
+        if return_code != 0:
+            raise Exception("Failed to generate video")
+            
+        print(f"Video generation completed for {talk_id}")
+        return str(output_path)
+    except Exception as e:
+        print(f"Error generating video: {str(e)}")
+        raise
+
+
 
 @app.post("/api/avatar/speak")
 async def generate_avatar_speech(request: SpeechRequest):
     try:
-        if LIVE_MODE:
-            try:
-                async with httpx.AsyncClient() as client:
-                    response = await client.post(
-                        "https://api.d-id.com/talks",
-                        headers={
-                            "Authorization": f"Basic {os.getenv('DID_API_KEY')}",
-                            "Content-Type": "application/json",
-                        },
-                        json={
-                            "script": {
-                                "type": "text",
-                                "input": request.text,
-                                # "provider": {
-                                #     "type": "elevenlabs",
-                                #     "voice_id": os.getenv('ELEVENLABS_VOICE_ID')
-                                # }
-                            },
-                            "source_url": os.getenv('AVATAR_IMAGE_URL')
-                        }
-                    )
-
-                response_json = response.json()
-
-                if response.status_code != 201:
-                    print(f"D-ID API Error: Status {response.status_code}")
-                    print(f"Response body: {response_json}")
-                    raise HTTPException(
-                        status_code=response.status_code,
-                        detail=f"D-ID API Error: {response_json}"
-                    )
-
-                return {"id": response_json.get("id")}
-            except httpx.HTTPError as e:
-                print(f"HTTP Error: {str(e)}")
-                raise HTTPException(status_code=500, detail=f"HTTP Error: {str(e)}")
-
-        mock_response = {
-            "voice_id": "JBFqnCBsd6RMkjVDRZzb",
-            "id": "tlk_W3vxWIxkPq1sliMY6aBfL",
-            "name": "George", 
-            "samples": None,
-            "category": "premade",
-            "fine_tuning": {
-                "is_allowed_to_fine_tune": True,
-                "state": {
-                    "eleven_turbo_v2": "fine_tuned",
-                    "eleven_v2_flash": "fine_tuned", 
-                    "eleven_v2_5_flash": "fine_tuned"
-                },
-                "verification_failures": [],
-                "verification_attempts_count": 0,
-                "manual_verification_requested": False,
-                "language": "en",
-                "progress": {
-                    "eleven_v2_flash": 1.0,
-                    "eleven_v2_5_flash": 1.0
-                },
-                "message": {
-                    "eleven_turbo_v2": "",
-                    "eleven_v2_flash": "Done!",
-                    "eleven_v2_5_flash": "Done!"
-                },
-                "dataset_duration_seconds": None,
-                "verification_attempts": None,
-                "slice_ids": None,
-                "manual_verification": None,
-                "max_verification_attempts": 5,
-                "next_max_verification_attempts_reset_unix_ms": 1700000000000
-            },
-            "labels": {
-                "accent": "British",
-                "description": "warm",
-                "age": "middle aged",
-                "gender": "male",
-                "use_case": "narration"
-            },
-            "description": None,
-            "preview_url": "https://storage.googleapis.com/eleven-public-prod/premade/voices/JBFqnCBsd6RMkjVDRZzb/e6206d1a-0721-4787-aafb-06a6e705cac5.mp3",
-            "available_for_tiers": [],
-            "settings": None,
-            "sharing": None,
-            "high_quality_base_model_ids": [
-                "eleven_v2_flash",
-                "eleven_flash_v2", 
-                "eleven_turbo_v2_5",
-                "eleven_multilingual_v2",
-                "eleven_v2_5_flash",
-                "eleven_flash_v2_5",
-                "eleven_turbo_v2"
-            ],
-            "safety_control": None,
-            "voice_verification": {
-                "requires_verification": False,
-                "is_verified": False,
-                "verification_failures": [],
-                "verification_attempts_count": 0,
-                "language": None,
-                "verification_attempts": None
-            },
-            "permission_on_resource": None,
-            "is_owner": None,
-            "is_legacy": False,
-            "is_mixed": False,
-            "created_at_unix": None
-        }
-
-        await asyncio.sleep(2)
-
-        return {"id": mock_response.get("id")}
-
-
+        talk_id = f"talk_{os.urandom(8).hex()}"
+        
+        audio_path = await generate_speech(request.text, talk_id)
+        
+        asyncio.create_task(generate_video(audio_path, talk_id))
+        
+        return {"id": talk_id}
     except Exception as e:
         print(f"Error generating avatar speech: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
@@ -198,111 +190,18 @@ async def generate_avatar_speech(request: SpeechRequest):
 @app.get("/api/avatar/speak/{id}")
 async def get_avatar_speech(id: str):
     try:
-        if LIVE_MODE: 
-            async with httpx.AsyncClient() as client:
-                response = await client.get(
-                    f"https://api.d-id.com/talks/{id}",
-                    headers={
-                        "Authorization": f"Basic {os.getenv('DID_API_KEY')}"
-                    }
-                )
-
-                if response.status_code != 200:
-                    print(f"D-ID API Error: Status {response.status_code}")
-                    print(f"Response body: {response_json}")
-                    raise HTTPException(
-                        status_code=response.status_code,
-                        detail=f"D-ID API Error: {response_json}"
-                    )
-
-                return {"video_url": response.json().get("result_url")}
-
-        mock_response = {
-            "user": {
-                "features": [
-                    "stitch",
-                    "clips:write",
-                    "scene",
-                    "premium-plus:skip-speaker-validation",
-                ],
-                "stripe_plan_group": "deid-trial",
-                "authorizer": "basic",
-                "owner_id": "google-oauth2|113759824665234992082",
-                "id": "google-oauth2|113759824665234992082",
-                "plan": "deid-trial",
-                "email": "dyego9444@gmail.com"
-            },
-            "script": {
-                "type": "text",
-                "length": 339,
-                "subtitles": False
-            },
-            "metadata": {
-                "driver_url": "bank://natural/driver-4/original",
-                "mouth_open": False,
-                "num_faces": 1,
-                "num_frames": 506,
-                "processing_fps": 80.61672752486093,
-                "resolution": [
-                    512,
-                    512
-                ],
-                "size_kib": 4815.6181640625
-            },
-            "audio_url": "https://d-id-talks-prod.s3.us-west-2.amazonaws.com/google-oauth2%7C113759824665234992082/tlk_W3vxWIxkPq1sliMY6aBfL/microsoft.wav?AWSAccessKeyId=AKIA5CUMPJBIK65W6FGA&Expires=1737768381&Signature=kHHuWIVth%2BjJv0XRumZaaO5RwPc%3D",
-            "created_at": "2025-01-24T01:26:21.352Z",
-            "face": {
-                "mask_confidence": -1,
-                "detection": [
-                    435,
-                    95,
-                    620,
-                    389
-                ],
-                "overlap": "no",
-                "size": 407,
-                "top_left": [
-                    324,
-                    39
-                ],
-                "face_id": 0,
-                "detect_confidence": 0.999882698059082
-            },
-            "config": {
-                "stitch": False,
-                "pad_audio": 0,
-                "align_driver": True,
-                "sharpen": True,
-                "reduce_noise": False,
-                "auto_match": True,
-                "normalization_factor": 1,
-                "show_watermark": True,
-                "motion_factor": 1,
-                "result_format": ".mp4",
-                "fluent": False,
-                "align_expand_factor": 0.3
-            },
-            "source_url": "https://d-id-talks-prod.s3.us-west-2.amazonaws.com/google-oauth2%7C113759824665234992082/tlk_W3vxWIxkPq1sliMY6aBfL/source/675d715d0aab82b6b53bb153-HeadshotPro-1024x832.png?AWSAccessKeyId=AKIA5CUMPJBIK65W6FGA&Expires=1737768381&Signature=LGZlQnRFMW1dF08xh1Ffcj%2BEInk%3D",
-            "created_by": "google-oauth2|113759824665234992082",
+        video_path = MEDIA_DIR / "video" / f"{id}.mp4"
+        
+        if not video_path.exists():
+            return {"status": "processing"}
+            
+        return {
             "status": "done",
-            "driver_url": "bank://natural/",
-            "modified_at": "2025-01-24T01:26:29.781Z",
-            "user_id": "google-oauth2|113759824665234992082",
-            "subtitles": False,
-            "id": "tlk_W3vxWIxkPq1sliMY6aBfL",
-            "duration": 20.25,
-            "started_at": "2025-01-24T01:26:21.407",
-            "result_url": "https://d-id-talks-prod.s3.us-west-2.amazonaws.com/google-oauth2%7C113759824665234992082/tlk_W3vxWIxkPq1sliMY6aBfL/1737681981352.mp4?AWSAccessKeyId=AKIA5CUMPJBIK65W6FGA&Expires=1737768389&Signature=x2ZUixoL3YZgu%2BeKxTv%2F3t7jNEo%3D"
+            "video_url": f"/media/video/{id}.mp4"
         }
-
-        await asyncio.sleep(2)
-
-        return { "video_url": mock_response.get("result_url") }
-
-    except httpx.HTTPError as e:
-        print(f"HTTP Error: {str(e)}")
-        raise HTTPException(status_code=500, detail=f"HTTP Error: {str(e)}")
     except Exception as e:
         print(f"Error getting avatar speech: {str(e)}")
-        print(f"Error type: {type(e)}")
         raise HTTPException(status_code=500, detail=str(e))
+
+from fastapi.staticfiles import StaticFiles
+app.mount("/media", StaticFiles(directory="media"), name="media")
