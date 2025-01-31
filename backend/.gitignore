@@ -4,5 +4,4 @@ __pycache__/
 .DS_Store
 media/
 temp/
-wav2lip/face_detection/detection/sfd/s3fd.pth
-wav2lip/checkpoints/*
+Wav2Lip/
