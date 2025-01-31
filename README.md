@@ -2,6 +2,13 @@
 
 A therapy session that might kill you wielding the power of sarcasm.
 
+![image](https://github.com/user-attachments/assets/81df5e98-3574-4f5f-b103-284f223f20dc)
+
+Voice: [Elevenlabs](https://elevenlabs.io/)
+Video: [Wav2Lip](https://elevenlabs.io/)
+Text:  [Anthropic](https://www.anthropic.com/api)
+
+
 ### Backend
 
 1. Create a Python virtual environment:
@@ -33,3 +40,7 @@ npm install
 ```bash
 npm run dev
 ```
+
+3. When running wav2lip
+
+you'll need to download the model and set it all up yourself to run locally or on a server :) 
