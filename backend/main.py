@@ -193,7 +193,8 @@ async def get_avatar_speech(id: str):
     try:
         video_path = MEDIA_DIR / "video" / f"{id}.mp4"
         
-        if not video_path.exists():
+        print("Video path", video_path)
+        if not os.path.exists(video_path):
             return {"status": "processing"}
             
         return {

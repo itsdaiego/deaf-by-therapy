@@ -3,4 +3,6 @@ venv/
 __pycache__/
 .DS_Store
 media/
-wav2lip/
+temp/
+wav2lip/face_detection/detection/sfd/s3fd.pth
+wav2lip/checkpoints/*
