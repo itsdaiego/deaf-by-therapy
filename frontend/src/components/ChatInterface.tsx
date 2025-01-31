@@ -55,7 +55,7 @@ const ChatInterface = ({ setIsThinking, videoRef, setIsPlaying }: ChatInterfaceP
         
         if (response.data.video_url) {
           console.log("Got video URL:", response.data.video_url)
-          return response.data.video_url
+          return `http://localhost:3000${response.data.video_url}`
         } else {
           console.log("No video URL yet, attempt:", attempts + 1)
         }
@@ -63,7 +63,7 @@ const ChatInterface = ({ setIsThinking, videoRef, setIsPlaying }: ChatInterfaceP
         console.error('Error polling for video:', error)
       }
       
-      await new Promise(resolve => setTimeout(resolve, 1000))
+      await new Promise(resolve => setTimeout(resolve, 5000))
       attempts++
     }
     
